@@ -1,5 +1,7 @@
-import prplus
+from algorithms import prplus
 import numpy as np
+import time
+from scipy import optimize
 
 args = (2, 3, 7, 8, 9, 10)  # parameter values
 def f(x, *args):
@@ -16,3 +18,8 @@ x0 = np.asarray((0, 0))  # Initial guess.
 
 res1 = prplus.fmin_cg(f, x0, fprime=gradf, args=args, min_moment=0.1)
 print('res1 = ', res1)
+
+
+res2 = optimize.fmin_cg(f, x0, fprime=gradf, args=args)
+print('res2 = ', res2)
+
