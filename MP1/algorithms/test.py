@@ -1,6 +1,7 @@
 from prplus import prplus
 from newtoncg import newtoncg
 import numpy as np
+import pdb
 
 args = (4, 12, 9, 4, 6, 2)  # parameter values
 def f(x, *args):

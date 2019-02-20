@@ -1,8 +1,9 @@
 import sys
+sys.path.append('../')
 import math
 import time
 import numpy as np
-from optimization import _check_unknown_options, wrap_function, _line_search_wolfe12, OptimizeWarning, _LineSearchError, OptimizeResult
+from algorithms.optimization import _check_unknown_options, wrap_function, _line_search_wolfe12, OptimizeWarning, _LineSearchError, OptimizeResult
 from scipy._lib.six import xrange
 
 # standard status messages of optimizers

@@ -1,9 +1,10 @@
 import sys
+sys.path.append('../')
 import time
 import numpy as np
 from numpy import (atleast_1d, eye, mgrid, argmin, zeros, shape, squeeze,
                    vectorize, asarray, sqrt, Inf, asfarray, isinf)
-from optimization import _check_unknown_options, wrap_function, _line_search_wolfe12, OptimizeWarning, _LineSearchError, OptimizeResult
+from algorithms.optimization import _check_unknown_options, wrap_function, _line_search_wolfe12, OptimizeWarning, _LineSearchError, OptimizeResult
 from scipy._lib.six import callable, xrange
 from scipy.optimize import minpack2
 
