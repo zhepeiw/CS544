@@ -73,7 +73,10 @@ if __name__ == '__main__':
     x2 = mixtures[1]
     v = np.concatenate([a, s1, s2])
     X = np.stack([x1, x2])
-    model = ICA(X, lamb=1)
+    mode = args.mode
+    if mode == 'ica':
+        mode = 'full'
+    model = ICA(X, lamb=1, ica_mode=mode)
 
     # optimization
     method = args.alg
