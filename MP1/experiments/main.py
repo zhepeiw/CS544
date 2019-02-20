@@ -30,10 +30,14 @@ def get_args():
                         default=200)
     parser.add_argument("--min_gtol", type=float,
                         help="""Minimum tolerance in gradient in PR""",
-                        default=0.0000001)
+                        default=1e-5)
     parser.add_argument("--min_moment", type=float,
                         help="""Minimum momentum for PR""",
-                        default=-1)
+                        default=np.NINF)
+    parser.add_argument("--restart", type=str,
+                        help="""Restart strategy for PR""",
+                        default=''
+                       )
 
 
     return parser.parse_args()
@@ -71,19 +75,24 @@ if __name__ == '__main__':
     X = np.stack([x1, x2])
     model = ICA(X, lamb=1)
 
-    pdb.set_trace()
     # optimization
     method = args.alg
-    max_iter, min_moment, min_gtol = '', '', ''
+    restart = args.restart
 
     if method == 'cg':
         res = newtoncg(model.loss, v, jac=model.grads, hess=model.hessian, return_all=True)
         losses = [model.loss(log[2]) for log in res['allvecs']]
         times = [log[1] for log in res['allvecs']]
     elif method == 'pr':
-        max_iter = args.max_iter
-        min_moment = args.min_moment
-        min_gtol = args.min_gtol
+        assert args.restart in ['iter', 'gtol', 'moment']
+        max_iter, min_moment, min_gtol = None, np.NINF, 1e-5
+        if args.restart == 'iter':
+            max_iter = args.max_iter
+        elif args.restart == 'gtol':
+            min_gtol = args.min_gtol
+        elif args.restart == 'moment':
+            min_moment = args.min_moment 
+
         xopt, fopt, n_f_eval, n_grad_eval, status, all_values = prplus(model.loss, 
                                                                        v, 
                                                                        fprime=model.grads, 
@@ -93,6 +102,7 @@ if __name__ == '__main__':
                                                                        retall=True, 
                                                                        full_output=True
                                                                       )
+        print('==> PR: Optimal loss: {}'.format(fopt))
         losses = [model.loss(log[2]) for log in all_values]
         times = [log[1] for log in all_values]
 
@@ -101,8 +111,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
-    file_name = '{}_{}_{}_iter{}_mom{}_gtol{}.npz'.format(args.mode, n_samples, method, 
-                                                          max_iter, min_moment, min_gtol)
+    file_name = '{}_{}_{}_{}.npz'.format(args.mode, n_samples, method, restart)
     pdb.set_trace()
     np.savez(os.path.join(out_dir, file_name), losses=losses, times=times)
 
