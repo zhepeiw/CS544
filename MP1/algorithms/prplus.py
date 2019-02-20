@@ -96,6 +96,10 @@ def prplus(f, x0, fprime=None, args=(), restart_gtol=None, stop_gtol=1e-5,
         List of arrays, containing the results at each iteration.
         Only returned if `retall` is True.
 
+    restart_count : int, optional
+        Integer value counting the number of times Polak-Ribiere method
+        restarted. Only returned when `full_output` is True.
+
     See Also
     --------
     minimize : common interface to all `scipy.optimize` algorithms for
@@ -203,6 +207,7 @@ def prplus(f, x0, fprime=None, args=(), restart_gtol=None, stop_gtol=1e-5,
     njev = 0
     warnflag = 0
     x = x0
+    restart_count = -1
     while (gnorm > stop_gtol) and (k < stop_maxiter) and (beta_k > stop_min_moment):
         res = _minimize_cg(f, x, args, fprime, callback=callback, return_all=True, start_k=k, **opts)
         k,_,_,_,gfk,beta_k = res['allvecs'][len(res['allvecs']) - 1]
@@ -213,9 +218,10 @@ def prplus(f, x0, fprime=None, args=(), restart_gtol=None, stop_gtol=1e-5,
         warnflag = res['status']
         k += 1
         gnorm = vecnorm(gfk, ord=norm)
+        restart_count += 1
 
     if full_output:
-        retlist = res['x'], res['fun'], res['nfev'], res['njev'], res['status']
+        retlist = res['x'], res['fun'], res['nfev'], res['njev'], res['status'], restart_count
         if retall:
             retlist += (allvecs, )
         return retlist
