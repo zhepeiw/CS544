@@ -17,6 +17,7 @@ def plot_experiment(paths, expr_name):
         curr_t = f['times']
         plt.plot(curr_t, curr_ls, label=method)
     plt.legend(loc='best')
+    #  plt.ylim(0, 0.1)
     plt.xlabel('Time (s)')
     plt.ylabel('Loss')
     plt.title('Loss Curve for {}'.format(expr_name))
@@ -25,7 +26,7 @@ def plot_experiment(paths, expr_name):
 
 if __name__ == '__main__':
     paths = glob.iglob('../out/*.npz')
-    expr_name = 'ICA-Small'
+    expr_name = 'ICA-Med'
     plot_experiment(paths, expr_name)
 
 

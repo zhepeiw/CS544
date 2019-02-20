@@ -83,6 +83,9 @@ if __name__ == '__main__':
         res = newtoncg(model.loss, v, jac=model.grads, hess=model.hessian, return_all=True)
         losses = [model.loss(log[2]) for log in res['allvecs']]
         times = [log[1] for log in res['allvecs']]
+        print('==> CG: Optimal loss: {}: #iters: {} time: {}'.format(losses[-1], 
+                                                                     len(losses), times[-1]))
+
     elif method == 'pr':
         assert args.restart in ['iter', 'gtol', 'moment']
         max_iter, min_moment, min_gtol = None, np.NINF, 1e-5
@@ -102,9 +105,10 @@ if __name__ == '__main__':
                                                                        retall=True, 
                                                                        full_output=True
                                                                       )
-        print('==> PR: Optimal loss: {}'.format(fopt))
         losses = [model.loss(log[2]) for log in all_values]
         times = [log[1] for log in all_values]
+        print('==> PR: Optimal loss: {}: #iters: {} time: {}'.format(losses[-1], 
+                                                                     len(losses), times[-1]))
 
     # saving output
     out_dir = '../out/'
