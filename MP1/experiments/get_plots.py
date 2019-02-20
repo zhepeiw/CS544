@@ -3,7 +3,19 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import os, glob
+from argparse import ArgumentParser, Namespace
 import pdb
+
+def get_args():
+    parser = ArgumentParser(description='Argument parser for plotting')
+    parser.add_argument("--dir", type=str,
+                        help="""Path to outputs""",
+                        default="../out/")
+    parser.add_argument("--name", type=str,
+                        help="""Name of the experiment""",
+                        required=True)
+
+    return parser.parse_args()
 
 def plot_experiment(paths, expr_name):
     plt.figure(figsize=(10, 10))
@@ -25,8 +37,10 @@ def plot_experiment(paths, expr_name):
     plt.savefig('../out/{}.pdf'.format(expr_name))
 
 if __name__ == '__main__':
-    paths = glob.iglob('../out/*.npz')
-    expr_name = 'ICA-Med'
+    args = get_args()
+    pdb.set_trace()
+    paths = glob.iglob(os.path.join(args.dir, "*.npz"))
+    expr_name = args.name
     plot_experiment(paths, expr_name)
 
 
