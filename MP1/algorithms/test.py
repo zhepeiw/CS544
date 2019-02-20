@@ -33,7 +33,7 @@ for log in allvecs:
 
 print()
 print("Polak-Ribiere:")
-xopt, fopt, n_f_eval, n_grad_eval, status, all_values restart_count = prplus(f, x0, fprime=gradf, args=args, stop_maxiter=200, restart_min_moment=-1, restart_gtol=0.00000000001, retall=True, full_output=True)
+xopt, fopt, n_f_eval, n_grad_eval, status, restart_count, all_values = prplus(f, x0, fprime=gradf, args=args, stop_maxiter=200, restart_min_moment=-1, restart_gtol=0.00000000001, retall=True, full_output=True)
 print('restat_count=', restart_count)
 for log in all_values:
     k, time, x_k, p_k, gfk, beta_k = log

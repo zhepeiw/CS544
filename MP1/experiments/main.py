@@ -99,7 +99,7 @@ if __name__ == '__main__':
         elif args.restart == 'moment':
             min_moment = args.min_moment 
 
-        xopt, fopt, n_f_eval, n_grad_eval, status, all_values = prplus(model.loss, 
+        xopt, fopt, n_f_eval, n_grad_eval, status, res_cnt, all_values = prplus(model.loss, 
                                                                        v, 
                                                                        fprime=model.grads, 
                                                                        stop_maxiter=max_iter, 
@@ -110,8 +110,10 @@ if __name__ == '__main__':
                                                                       )
         losses = [model.loss(log[2]) for log in all_values]
         times = [log[1] for log in all_values]
-        print('==> PR: Optimal loss: {}: #iters: {} time: {}'.format(losses[-1], 
-                                                                     len(losses), times[-1]))
+        print('==> PR: Optimal loss: {}: #iters: {} time: {} #restarts: {}'.format(losses[-1], 
+                                                                                   len(losses), 
+                                                                                   times[-1],
+                                                                                   res_cnt))
 
     # saving output
     out_dir = '../out/'
