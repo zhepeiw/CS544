@@ -17,30 +17,39 @@ def get_args():
 
     return parser.parse_args()
 
-def plot_experiment(paths, expr_name):
+def plot_experiment(paths, expr_name, out_dir='../out'):
     plt.figure(figsize=(10, 10))
+    min_t = np.inf
     for path in paths:
-        method = path.split('_')[2]
+        f = np.load(path)
+        curr_t = f['times']
+        min_t = min(max(curr_t), min_t)
+    for path in paths:
+        name = os.path.basename(path)
+        method = name.split('_')[2]
         if method == 'pr':
-            restart = path.split('_')[-1].split('.')[0]
+            restart = name.split('_')[-1].split('.')[0]
             method = 'pr-{}'.format(restart)
         f = np.load(path)
         curr_ls = f['losses']
         curr_t = f['times']
-        plt.plot(curr_t, curr_ls, label=method)
+        if curr_t[-1] <= min_t:
+            cutoff = len(curr_t)
+        else:
+            cutoff = np.argmax(curr_t > min_t)
+        plt.plot(curr_t[:cutoff], np.log(curr_ls)[:cutoff], label=method)
     plt.legend(loc='best')
     #  plt.ylim(0, 0.1)
     plt.xlabel('Time (s)')
-    plt.ylabel('Loss')
-    plt.title('Loss Curve for {}'.format(expr_name))
+    plt.ylabel('Log Loss')
+    plt.title('Log-Loss Curve for {}'.format(expr_name))
     plt.grid(True)
-    plt.savefig('../out/{}.pdf'.format(expr_name))
+    plt.savefig(os.path.join(out_dir, '{}.pdf'.format(expr_name)))
 
 if __name__ == '__main__':
     args = get_args()
-    pdb.set_trace()
-    paths = glob.iglob(os.path.join(args.dir, "*.npz"))
+    paths = glob.glob(os.path.join(args.dir, "*.npz"))
     expr_name = args.name
-    plot_experiment(paths, expr_name)
+    plot_experiment(paths, expr_name, args.dir)
 
 

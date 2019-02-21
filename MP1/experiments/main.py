@@ -38,6 +38,9 @@ def get_args():
                         help="""Restart strategy for PR""",
                         default=''
                        )
+    parser.add_argument('--out_dir', type=str,
+                        help="""Output directory of the results""",
+                        default='../out/')
 
 
     return parser.parse_args()
@@ -120,7 +123,7 @@ if __name__ == '__main__':
                                                                                    res_cnt))
 
     # saving output
-    out_dir = '../out/'
+    out_dir = args.out_dir
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
