@@ -91,13 +91,14 @@ if __name__ == '__main__':
 
     elif method == 'pr':
         assert args.restart in ['iter', 'gtol', 'moment']
-        max_iter, min_moment, min_gtol = None, np.NINF, 1e-5
+        max_iter, min_moment, min_gtol = None, np.NINF, 1e-10
         if args.restart == 'iter':
             max_iter = args.max_iter
         elif args.restart == 'gtol':
             min_gtol = args.min_gtol
         elif args.restart == 'moment':
             min_moment = args.min_moment 
+        print(max_iter, min_gtol, min_moment)
 
         xopt, fopt, n_f_eval, n_grad_eval, status, res_cnt, all_values = prplus(model.loss, 
                                                                        v, 
