@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # argparse
     args = get_args()
 
-    # loading data 
+    # loading data
     mixing_matrix = np.array([[0.8, 0.2],
                               [0.6, 0.4]])
     n_samples = args.n_samp
@@ -66,23 +66,25 @@ if __name__ == '__main__':
         normalize_by_mean=normalize_by_mean,
         normalize_by_std=normalize_by_std,
         wavs_dir=wavs_dir)
-    
+
     # initial guesses and model setup
     a = np.array([0.4, 0.6, 0.7, 0.3])
-    if args.mode == 'known_mix':
-        a = mixing_matrix.flatten()
 
     t = np.linspace(-1, 1, n_samples)
     s1 = np.sin(t)
     s2 = np.cos(t)
     x1 = mixtures[0]
     x2 = mixtures[1]
-    v = np.concatenate([a, s1, s2])
+    if args.mode != 'known_mix':
+        v = np.concatenate([a, s1, s2])
+    else:
+        v = np.concatenate([s1, s2])
     X = np.stack([x1, x2])
     mode = args.mode
     if mode == 'ica':
         mode = 'full'
-    model = ICA(X, lamb=1, ica_mode=mode)
+    model = ICA(X, A=mixing_matrix if mode == 'known_mix' else None,
+                lamb=1, ica_mode=mode)
 
     # optimization
     method = args.alg
@@ -92,7 +94,7 @@ if __name__ == '__main__':
         res = newtoncg(model.loss, v, jac=model.grads, hess=model.hessian, return_all=True)
         losses = [model.loss(log[2]) for log in res['allvecs']]
         times = [log[1] for log in res['allvecs']]
-        print('==> CG: Optimal loss: {}: #iters: {} time: {}'.format(losses[-1], 
+        print('==> CG: Optimal loss: {}: #iters: {} time: {}'.format(losses[-1],
                                                                      len(losses), times[-1]))
 
     elif method == 'pr':
@@ -103,22 +105,22 @@ if __name__ == '__main__':
         elif args.restart == 'gtol':
             min_gtol = args.min_gtol
         elif args.restart == 'moment':
-            min_moment = args.min_moment 
+            min_moment = args.min_moment
         print(max_iter, min_gtol, min_moment)
 
-        xopt, fopt, n_f_eval, n_grad_eval, status, res_cnt, all_values = prplus(model.loss, 
-                                                                       v, 
-                                                                       fprime=model.grads, 
-                                                                       stop_maxiter=max_iter, 
-                                                                       restart_min_moment=min_moment, 
+        xopt, fopt, n_f_eval, n_grad_eval, status, res_cnt, all_values = prplus(model.loss,
+                                                                       v,
+                                                                       fprime=model.grads,
+                                                                       stop_maxiter=max_iter,
+                                                                       restart_min_moment=min_moment,
                                                                        restart_gtol=min_gtol,
-                                                                       retall=True, 
+                                                                       retall=True,
                                                                        full_output=True
                                                                       )
         losses = [model.loss(log[2]) for log in all_values]
         times = [log[1] for log in all_values]
-        print('==> PR: Optimal loss: {}: #iters: {} time: {} #restarts: {}'.format(losses[-1], 
-                                                                                   len(losses), 
+        print('==> PR: Optimal loss: {}: #iters: {} time: {} #restarts: {}'.format(losses[-1],
+                                                                                   len(losses),
                                                                                    times[-1],
                                                                                    res_cnt))
 
@@ -130,5 +132,3 @@ if __name__ == '__main__':
     file_name = '{}_{}_{}_{}.npz'.format(args.mode, n_samples, method, restart)
     pdb.set_trace()
     np.savez(os.path.join(out_dir, file_name), losses=losses, times=times)
-
-
