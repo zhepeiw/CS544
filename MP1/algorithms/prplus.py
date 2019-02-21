@@ -1,14 +1,14 @@
-import warnings
 import sys
-import numpy
-from scipy._lib.six import callable, xrange
+sys.path.append('../')
+import time
+import numpy as np
 from numpy import (atleast_1d, eye, mgrid, argmin, zeros, shape, squeeze,
                    vectorize, asarray, sqrt, Inf, asfarray, isinf)
-import numpy as np
+from algorithms.optimization import _check_unknown_options, wrap_function, _line_search_wolfe12, OptimizeWarning, _LineSearchError, OptimizeResult
+from scipy._lib.six import callable, xrange
 from scipy.optimize import minpack2
-from scipy.optimize.linesearch import line_search_wolfe1
 
-_epsilon = sqrt(numpy.finfo(float).eps)
+_epsilon = sqrt(np.finfo(float).eps)
 # standard status messages of optimizers
 _status_message = {'success': 'Optimization terminated successfully.',
                    'maxfev': 'Maximum number of function evaluations has '
@@ -18,9 +18,10 @@ _status_message = {'success': 'Optimization terminated successfully.',
                    'pr_loss': 'Desired error not necessarily achieved due '
                               'to precision loss.'}
 
-def fmin_cg(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf, epsilon=_epsilon,
-            maxiter=None, min_moment=None, full_output=0, disp=1, retall=0,
-            callback=None):
+def prplus(f, x0, fprime=None, args=(), restart_gtol=None, stop_gtol=1e-5,
+           norm=Inf, epsilon=_epsilon, restart_maxiter=None, stop_maxiter=None,
+           restart_min_moment=None, stop_min_moment=np.NINF, full_output=0,
+           disp=False, retall=0, callback=None):
     """
     Minimize a function using a nonlinear conjugate gradient algorithm.
 
@@ -94,6 +95,10 @@ def fmin_cg(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf, epsilon=_epsilon,
     allvecs : list of ndarray, optional
         List of arrays, containing the results at each iteration.
         Only returned if `retall` is True.
+
+    restart_count : int, optional
+        Integer value counting the number of times Polak-Ribiere method
+        restarted. Only returned when `full_output` is True.
 
     See Also
     --------
@@ -171,32 +176,93 @@ def fmin_cg(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf, epsilon=_epsilon,
     array([-1.80851064, -0.25531915])
 
     """
-    opts = {'gtol': gtol,
+    if restart_gtol is None:
+        restart_gtol = stop_gtol
+    else:
+        restart_gtol = min(restart_gtol, stop_gtol)
+    if restart_maxiter is None:
+        restart_maxiter = stop_maxiter
+    else:
+        restart_maxiter = min(restart_maxiter, stop_maxiter)
+    if stop_maxiter is None:
+        stop_maxiter = len(x0) * 200
+    if restart_min_moment is None:
+        restart_min_moment = stop_min_moment
+    else:
+        restart_min_moment = min(restart_min_moment, stop_min_moment)
+
+    opts = {'gtol': restart_gtol,
             'norm': norm,
             'eps': epsilon,
             'disp': disp,
-            'maxiter': maxiter,
-            'min_moment': min_moment,
-            'return_all': retall}
+            'maxiter': restart_maxiter,
+            'min_moment': restart_min_moment,
+            'start_time': time.time()}
 
-    res = _minimize_cg(f, x0, args, fprime, callback=callback, **opts)
+    gnorm = np.Inf
+    k = 0
+    beta_k = np.Inf
+    allvecs = []
+    nfev = 0
+    njev = 0
+    warnflag = 0
+    x = x0
+    restart_count = -1
+    while (gnorm > stop_gtol) and (k < stop_maxiter) and (beta_k > stop_min_moment):
+        res = _minimize_cg(f, x, args, fprime, callback=callback, return_all=True, start_k=k, **opts)
+        k,_,_,_,gfk,beta_k = res['allvecs'][len(res['allvecs']) - 1]
+        x = res['x']
+        nfev += res['nfev']
+        njev += res['njev']
+        allvecs += res['allvecs']
+        warnflag = res['status']
+        k += 1
+        gnorm = vecnorm(gfk, ord=norm)
+        restart_count += 1
 
     if full_output:
-        retlist = res['x'], res['fun'], res['nfev'], res['njev'], res['status']
+        retlist = res['x'], res['fun'], res['nfev'], res['njev'], res['status'], restart_count
         if retall:
-            retlist += (res['allvecs'], )
+            retlist += (allvecs, )
         return retlist
     else:
         if retall:
-            return res['x'], res['allvecs']
+            return res['x'], allvecs
         else:
             return res['x']
+
+    if warnflag == 2:
+        msg = _status_message['pr_loss']
+        if disp:
+            print("Warning: " + msg)
+            print("         Current function value: %f" % fval)
+            print("         Iterations: %d" % k)
+            print("         Function evaluations: %d" % func_calls[0])
+            print("         Gradient evaluations: %d" % grad_calls[0])
+
+    elif k >= maxiter:
+        warnflag = 1
+        msg = _status_message['maxiter']
+        if disp:
+            print("Warning: " + msg)
+            print("         Current function value: %f" % fval)
+            print("         Iterations: %d" % k)
+            print("         Function evaluations: %d" % func_calls[0])
+            print("         Gradient evaluations: %d" % grad_calls[0])
+    else:
+        msg = _status_message['success']
+        if disp:
+            print(msg)
+            print("         Current function value: %f" % fval)
+            print("         Iterations: %d" % k)
+            print("         Function evaluations: %d" % func_calls[0])
+            print("         Gradient evaluations: %d" % grad_calls[0])
 
 
 def _minimize_cg(fun, x0, args=(), jac=None, callback=None,
                  gtol=1e-5, norm=Inf, eps=_epsilon, maxiter=None,
-                 min_moment=None, disp=False, return_all=False,
-                 **unknown_options):
+                 min_moment=np.NINF, disp=False, return_all=False, start_time=0,
+                 start_k=0, **unknown_options):
     """
     Minimization of scalar function of one or more variables using the
     conjugate gradient algorithm.
@@ -227,29 +293,27 @@ def _minimize_cg(fun, x0, args=(), jac=None, callback=None,
     x0 = asarray(x0).flatten()
     if maxiter is None:
         maxiter = len(x0) * 200
-    if min_moment is None:
-        min_moment = np.NINF
     func_calls, f = wrap_function(f, args)
     if fprime is None:
         grad_calls, myfprime = wrap_function(approx_fprime, (f, epsilon))
     else:
         grad_calls, myfprime = wrap_function(fprime, args)
     gfk = myfprime(x0)
-    k = 0
+    k = start_k
     xk = x0
 
     # Sets the initial step guess to dx ~ 1
     old_fval = f(xk)
     old_old_fval = old_fval + np.linalg.norm(gfk) / 2
 
-    if retall:
-        allvecs = [xk]
     warnflag = 0
     pk = -gfk
     gnorm = vecnorm(gfk, ord=norm)
     beta_k = np.Inf
+    if retall:
+        allvecs = [(k, time.time() - start_time, xk, pk, gfk, beta_k)]
     while (gnorm > gtol) and (k < maxiter) and (beta_k > min_moment):
-        deltak = numpy.dot(gfk, gfk)
+        deltak = np.dot(gfk, gfk)
 
         try:
             alpha_k, fc, gc, old_fval, old_old_fval, gfkp1 = \
@@ -261,46 +325,27 @@ def _minimize_cg(fun, x0, args=(), jac=None, callback=None,
             break
 
         xk = xk + alpha_k * pk
-        if retall:
-            allvecs.append(xk)
         if gfkp1 is None:
             gfkp1 = myfprime(xk)
         yk = gfkp1 - gfk
-        beta_k = max(0, numpy.dot(yk, gfkp1) / deltak)
+        beta_k = max(0, np.dot(yk, gfkp1) / deltak)
         pk = -gfkp1 + beta_k * pk
         gfk = gfkp1
         gnorm = vecnorm(gfk, ord=norm)
         if callback is not None:
             callback(xk)
         k += 1
+        if retall:
+            allvecs.append((k, time.time() - start_time, xk, pk, gfk, beta_k))
 
     fval = old_fval
     if warnflag == 2:
         msg = _status_message['pr_loss']
-        if disp:
-            print("Warning: " + msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % k)
-            print("         Function evaluations: %d" % func_calls[0])
-            print("         Gradient evaluations: %d" % grad_calls[0])
-
     elif k >= maxiter:
         warnflag = 1
         msg = _status_message['maxiter']
-        if disp:
-            print("Warning: " + msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % k)
-            print("         Function evaluations: %d" % func_calls[0])
-            print("         Gradient evaluations: %d" % grad_calls[0])
     else:
         msg = _status_message['success']
-        if disp:
-            print(msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % k)
-            print("         Function evaluations: %d" % func_calls[0])
-            print("         Gradient evaluations: %d" % grad_calls[0])
 
     result = OptimizeResult(fun=fval, jac=gfk, nfev=func_calls[0],
                             njev=grad_calls[0], status=warnflag,
@@ -311,123 +356,10 @@ def _minimize_cg(fun, x0, args=(), jac=None, callback=None,
     return result
 
 
-def _check_unknown_options(unknown_options):
-    if unknown_options:
-        msg = ", ".join(map(str, unknown_options.keys()))
-        # Stack level 4: this is called from _minimize_*, which is
-        # called from another function in Scipy. Level 4 is the first
-        # level in user code.
-        warnings.warn("Unknown solver options: %s" % msg, OptimizeWarning, 4)
-
-
-def wrap_function(function, args):
-    ncalls = [0]
-    if function is None:
-        return ncalls, None
-
-    def function_wrapper(*wrapper_args):
-        ncalls[0] += 1
-        return function(*(wrapper_args + args))
-
-    return ncalls, function_wrapper
-
-
 def vecnorm(x, ord=2):
     if ord == Inf:
-        return numpy.amax(numpy.abs(x))
+        return np.amax(np.abs(x))
     elif ord == -Inf:
-        return numpy.amin(numpy.abs(x))
+        return np.amin(np.abs(x))
     else:
-        return numpy.sum(numpy.abs(x)**ord, axis=0)**(1.0 / ord)
-
-
-class _LineSearchError(RuntimeError):
-    pass
-
-
-def _line_search_wolfe12(f, fprime, xk, pk, gfk, old_fval, old_old_fval,
-                         **kwargs):
-    """
-    Same as line_search_wolfe1, but fall back to line_search_wolfe2 if
-    suitable step length is not found, and raise an exception if a
-    suitable step length is not found.
-
-    Raises
-    ------
-    _LineSearchError
-        If no suitable step size is found
-
-    """
-    ret = line_search_wolfe1(f, fprime, xk, pk, gfk,
-                             old_fval, old_old_fval,
-                             **kwargs)
-
-    if ret[0] is None:
-        # line search failed: try different one.
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', LineSearchWarning)
-            ret = line_search_wolfe2(f, fprime, xk, pk, gfk,
-                                     old_fval, old_old_fval)
-
-    if ret[0] is None:
-        raise _LineSearchError()
-
-    return ret
-
-
-class OptimizeResult(dict):
-    """ Represents the optimization result.
-
-    Attributes
-    ----------
-    x : ndarray
-        The solution of the optimization.
-    success : bool
-        Whether or not the optimizer exited successfully.
-    status : int
-        Termination status of the optimizer. Its value depends on the
-        underlying solver. Refer to `message` for details.
-    message : str
-        Description of the cause of the termination.
-    fun, jac, hess: ndarray
-        Values of objective function, its Jacobian and its Hessian (if
-        available). The Hessians may be approximations, see the documentation
-        of the function in question.
-    hess_inv : object
-        Inverse of the objective function's Hessian; may be an approximation.
-        Not available for all solvers. The type of this attribute may be
-        either np.ndarray or scipy.sparse.linalg.LinearOperator.
-    nfev, njev, nhev : int
-        Number of evaluations of the objective functions and of its
-        Jacobian and Hessian.
-    nit : int
-        Number of iterations performed by the optimizer.
-    maxcv : float
-        The maximum constraint violation.
-
-    Notes
-    -----
-    There may be additional attributes not listed above depending of the
-    specific solver. Since this class is essentially a subclass of dict
-    with attribute accessors, one can see which attributes are available
-    using the `keys()` method.
-    """
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError:
-            raise AttributeError(name)
-
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-
-    def __repr__(self):
-        if self.keys():
-            m = max(map(len, list(self.keys()))) + 1
-            return '\n'.join([k.rjust(m) + ': ' + repr(v)
-                              for k, v in sorted(self.items())])
-        else:
-            return self.__class__.__name__ + "()"
-
-    def __dir__(self):
-        return list(self.keys())
+        return np.sum(np.abs(x)**ord, axis=0)**(1.0 / ord)

@@ -4,6 +4,7 @@ class ICA():
     def __init__(self, X, lamb=1e-1, ica_mode='full'):
         self.X = X
         self.lamb = lamb
+        self.mode = ica_mode
         if ica_mode == 'full':
             self.f = np.tanh
             self.g = lambda x : x**2
@@ -11,7 +12,7 @@ class ICA():
             self.gd = lambda x : 2*x
             self.fdd = lambda x : -2*np.tanh(x)*(1 - np.tanh(x)**2)
             self.gdd = lambda x : 2*np.ones_like(x)
-        elif ica_mode == 'pca':
+        elif ica_mode == 'pca' or ica_mode == 'known_mix':
             self.f = lambda x : x
             self.g = lambda x : x
             self.fd = lambda x : np.ones_like(x)
@@ -44,7 +45,8 @@ class ICA():
         S_grad[1] += self.lamb*c2*self.g(S[0])*self.fd(S[1])
         S_grad[1] += self.lamb*c1*self.gd(S[1])*self.f(S[0])
         grads = np.zeros_like(vars)
-        grads[:4] = A_grad.reshape(-1)
+        if self.mode != 'known_mix':
+            grads[:4] = A_grad.reshape(-1)
         grads[4:] = S_grad.reshape(-1)
         return grads
 
@@ -98,7 +100,13 @@ class ICA():
         return hessian_mat
 
     def hessian(self, vars):
-        return self.hessian_l1(vars) + self.lamb * self.hessian_l2(vars)
+        temp = self.hessian_l1(vars) + self.lamb * self.hessian_l2(vars)
+        hess = np.zeros_like(temp)
+        if self.mode == 'known_mix':
+            hess[4:, 4:] = temp[4:, 4:]
+        else:
+            hess = temp
+        return hess
 
     def _precompute_derivatives(self, S):
         f = self.f(S)
