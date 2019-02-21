@@ -93,7 +93,7 @@ class ICA():
         hessian_mat[4+T:, 4+T:] = self._s2s2_hessian(S, f, fd, fdd, g, gd,
                                                       gdd, sfg01, sfg10)
         hessian_mat[4:4+T, 4+T:] = self._s1s2_hessian(S, f, fd, fdd, g, gd,
-                                                      gdd, sfg01, sfg10).T
+                                                      gdd, sfg01, sfg10)
         hessian_mat[4+T:, 4:4+T] = hessian_mat[4:4+T, 4+T:].T
         return hessian_mat
 
