@@ -24,7 +24,7 @@ def plot_experiment(paths, expr_name, out_dir='../out'):
         f = np.load(path)
         curr_t = f['times']
         min_t = min(max(curr_t), min_t)
-    for path in paths:
+    for path in sorted(paths):
         name = os.path.basename(path)
         method = name.split('_')[2]
         if method == 'pr':
