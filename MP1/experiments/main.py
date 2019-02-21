@@ -66,6 +66,9 @@ if __name__ == '__main__':
     
     # initial guesses and model setup
     a = np.array([0.4, 0.6, 0.7, 0.3])
+    if args.mode == 'known_mix':
+        a = mixing_matrix.flatten()
+
     t = np.linspace(-1, 1, n_samples)
     s1 = np.sin(t)
     s2 = np.cos(t)
