@@ -5,14 +5,14 @@ class ICA():
         self.X = X
         self.lamb = lamb
         self.mode = ica_mode
-        if ica_mode == 'full' or ica_mode == 'known_mix':
+        if ica_mode == 'full':
             self.f = np.tanh
             self.g = lambda x : x**2
             self.fd = lambda x : 1 - np.tanh(x)**2
             self.gd = lambda x : 2*x
             self.fdd = lambda x : -2*np.tanh(x)*(1 - np.tanh(x)**2)
             self.gdd = lambda x : 2*np.ones_like(x)
-        elif ica_mode == 'pca':
+        elif ica_mode == 'pca' or ica_mode == 'known_mix':
             self.f = lambda x : x
             self.g = lambda x : x
             self.fd = lambda x : np.ones_like(x)
