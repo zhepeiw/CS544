@@ -84,7 +84,7 @@ if __name__ == '__main__':
     if mode == 'ica':
         mode = 'full'
     model = ICA(X, A=mixing_matrix if mode == 'known_mix' else None,
-                lamb=1, ica_mode=mode)
+                lamb=0 if mode == 'known_mix' else 1, ica_mode=mode)
 
     # optimization
     method = args.alg
@@ -130,7 +130,8 @@ if __name__ == '__main__':
         os.mkdir(out_dir)
 
     file_name = '{}_{}_{}_{}.npz'.format(args.mode, n_samples, method, restart)
-    pdb.set_trace()
+    losses = [model.loss(v)] + losses
+    times = [0] + times
     np.savez(os.path.join(out_dir, file_name), losses=losses, times=times)
 
 

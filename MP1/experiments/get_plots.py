@@ -18,6 +18,7 @@ def get_args():
     return parser.parse_args()
 
 def plot_experiment(paths, expr_name, out_dir='../out'):
+    matplotlib.rcParams.update({'font.size': 17.5})
     plt.figure(figsize=(10, 10))
     min_t = np.inf
     for path in paths:
@@ -26,7 +27,7 @@ def plot_experiment(paths, expr_name, out_dir='../out'):
         min_t = min(max(curr_t), min_t)
     for path in sorted(paths):
         name = os.path.basename(path)
-        method = name.split('_')[2]
+        method = name.split('_')[-2]
         if method == 'pr':
             restart = name.split('_')[-1].split('.')[0]
             method = 'pr-{}'.format(restart)
@@ -37,6 +38,10 @@ def plot_experiment(paths, expr_name, out_dir='../out'):
             cutoff = len(curr_t)
         else:
             cutoff = np.argmax(curr_t > min_t)
+        if cutoff == 1:
+            curr_t = [0, min_t]
+            curr_ls = [curr_ls[0], curr_ls[0]]
+            cutoff = 2
         plt.plot(curr_t[:cutoff], np.log(curr_ls)[:cutoff], label=method)
     plt.legend(loc='best')
     #  plt.ylim(0, 0.1)
