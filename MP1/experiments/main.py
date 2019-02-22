@@ -94,6 +94,9 @@ if __name__ == '__main__':
         res = newtoncg(model.loss, v, jac=model.grads, hess=model.hessian, return_all=True)
         losses = [model.loss(log[2]) for log in res['allvecs']]
         times = [log[1] for log in res['allvecs']]
+        for log in res['allvecs']:
+            k, time, x_k, grad, hess = log
+            print("k={}\ttime={:.8f}\tx_k={}\tf_k={}\tgrad={}\thess={}".format(k, time, model.loss(x_k), np.linalg.norm(grad), np.linalg.norm(hess)))
         print('==> CG: Optimal loss: {}: #iters: {} time: {}'.format(losses[-1],
                                                                      len(losses), times[-1]))
 
@@ -118,6 +121,9 @@ if __name__ == '__main__':
                                                                        full_output=True
                                                                       )
         losses = [model.loss(log[2]) for log in all_values]
+        for log in all_values:
+            k, time, x_k, p_k, gfk, beta_k = log
+            print("k={}\ttime={:.8f}\tf_k={:.8f}\tgrad={}\tbeta_k={:.8f}".format(k, time, model.loss(x_k), np.linalg.norm(gfk), beta_k))
         times = [log[1] for log in all_values]
         print('==> PR: Optimal loss: {}: #iters: {} time: {} #restarts: {}'.format(losses[-1],
                                                                                    len(losses),
@@ -130,5 +136,5 @@ if __name__ == '__main__':
         os.mkdir(out_dir)
 
     file_name = '{}_{}_{}_{}.npz'.format(args.mode, n_samples, method, restart)
-    pdb.set_trace()
+    #pdb.set_trace()
     np.savez(os.path.join(out_dir, file_name), losses=losses, times=times)
