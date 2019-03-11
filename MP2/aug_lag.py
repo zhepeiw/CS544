@@ -33,6 +33,10 @@ def aug_lag_solver(f, fprime, g, x, lamb, c, r=2, n_epochs=50):
 def get_finite_diff(n_points):
     '''
         assuming h is in row-major order with [h(0, 0), h(0, 1), ... , h(0, n-1), ...]
+
+        returns:
+            Ax: sparse matrix with shape n_points**2 x n_points**2
+            Ay: sparse matrix with shape n_points**2 x n_points**2
     '''
     Ax = -sparse.eye(n_points**2, format='csr')
     Ax += sparse.diags([1 for _ in range(n_points**2 - 1)], offsets=1, format='csr')
@@ -43,28 +47,54 @@ def get_finite_diff(n_points):
                        offsets=n_points, format='csr')
     Ay[n_points*(n_points-1):] = Ay[n_points*(n_points-2):n_points*(n_points-1)]
 
-    #  Ax = np.zeros((n_points**2, n_points**2))
-    #  for i in range(Ax.shape[0] - n_points):
-    #      Ax[i, i] = -1
-    #      Ax[i, i + n_points] = 1
-    #  for i in range(Ax.shape[0] - n_points, Ax.shape[0]):
-    #      Ax[i, i] = 1
-    #      Ax[i, i - n_points] = -1
-
-    #  Ay = np.zeros_like(Ax)
-    #  for i in range(Ax.shape[0]):
-    #      if (i + 1) % n_points != 0:
-    #          Ay[i, i] = -1
-    #          Ay[i, i + 1] = 1
-    #      else:
-    #          Ay[i, i] = 1
-    #          Ay[i, i - 1] = -1
-
     return Ax, Ay
 
+def get_constraints(G, H, n_points):
+    '''
+        
 
+        returns:
+            L_sp: sparse matrix with shape n_c x n_points**2
+            C_sp: sparse vector with shape n_c x 1
+    '''
+
+    L_sp = sparse.csr_matrix((len(H), n_points**2))
+    for (i, grid) in enumerate(G):
+        x = int(grid[0] * (n_points-1))
+        y = int(grid[1] * (n_points-1))
+        idx = x * n_points + y
+        L_sp[i, idx] = 1
+    
+    C_sp = sparse.csc_matrix(np.expand_dims(np.array(H), axis=1).reshape(-1, 1))
+
+    return L_sp, C_sp
+
+def fn_smooth(h, M, L, C, lamb, ro):
+    '''
+        
+
+    '''
+    f = 0.5 * h.T @ M @ h
+    g = L @ h - C
+    return f - lamb.T @ g + 0.5 * ro * g.T @ g
 
 if __name__ == "__main__":
-    Ax, Ay = get_finite_diff(4)
+    #  Ax, Ay = get_finite_diff(256)
+
+    G = [
+        (0, 0),
+        (0, 1/2),
+        (0, 1),
+        (1/2, 0),
+        (1/2, 1/2),
+        (1/2, 1),
+        (1, 0),
+        (1, 1/2),
+        (1, 1)
+    ]
+
+    H = [1, 0, 1, 0, 1, 0, 1, 0, 1]
+    L, C = get_constraints(G, H, 256)
+
     pdb.set_trace()
 
