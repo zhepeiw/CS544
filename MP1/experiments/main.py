@@ -69,20 +69,22 @@ if __name__ == '__main__':
     
     # initial guesses and model setup
     a = np.array([0.4, 0.6, 0.7, 0.3])
-    if args.mode == 'known_mix':
-        a = mixing_matrix.flatten()
 
     t = np.linspace(-1, 1, n_samples)
     s1 = np.sin(t)
     s2 = np.cos(t)
     x1 = mixtures[0]
     x2 = mixtures[1]
-    v = np.concatenate([a, s1, s2])
+    if args.mode != 'known_mix':
+        v = np.concatenate([a, s1, s2])
+    else:
+        v = np.concatenate([s1, s2])
     X = np.stack([x1, x2])
     mode = args.mode
     if mode == 'ica':
         mode = 'full'
-    model = ICA(X, lamb=1, ica_mode=mode)
+    model = ICA(X, A=mixing_matrix if mode == 'known_mix' else None,
+                lamb=0 if mode == 'known_mix' else 1, ica_mode=mode)
 
     # optimization
     method = args.alg
@@ -128,7 +130,8 @@ if __name__ == '__main__':
         os.mkdir(out_dir)
 
     file_name = '{}_{}_{}_{}.npz'.format(args.mode, n_samples, method, restart)
-    pdb.set_trace()
+    losses = [model.loss(v)] + losses
+    times = [0] + times
     np.savez(os.path.join(out_dir, file_name), losses=losses, times=times)
 
 

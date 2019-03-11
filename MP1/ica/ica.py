@@ -1,10 +1,11 @@
 import numpy as np
 
 class ICA():
-    def __init__(self, X, lamb=1e-1, ica_mode='full'):
+    def __init__(self, X, A=None, lamb=1e-1, ica_mode='full'):
         self.X = X
         self.lamb = lamb
         self.mode = ica_mode
+        self.var_length = 2*X.shape[1] + 4
         if ica_mode == 'full':
             self.f = np.tanh
             self.g = lambda x : x**2
@@ -19,14 +20,28 @@ class ICA():
             self.gd = lambda x : np.ones_like(x)
             self.fdd = lambda x : np.zeros_like(x)
             self.gdd = lambda x : np.zeros_like(x)
+            if ica_mode == 'known_mix':
+                assert A is not None
+                self.A = A
+
+    def _convert_vars(self, vars):
+        if self.mode != 'known_mix':
+            A = vars[:4].reshape(2, 2)
+            S = vars[4:].reshape(2, -1)
+        else:
+            A = self.A
+            S = vars.reshape(2, -1)
+        return A, S
 
     def loss(self, vars):
         '''
-        vars : Minimization variables are a 4 + 2*T vector where T is the length of each of
-        the input signals.
+        If A is unknown:
+            vars : Minimization variables are a 4 + 2*T vector where T is the length of each of
+            the input signals.
+        else if A is known:
+            vars : 2*T minimization variables
         '''
-        A = vars[:4].reshape(2, 2)
-        S = vars[4:].reshape(2, -1)
+        A, S = self._convert_vars(vars)
         reconstruction_loss = 0.5*np.sum((self.X - A@S)**2)
         correlation_mat = self.f(S) @ self.g(S).T
         diag_mat = np.diag(np.diag(correlation_mat))
@@ -34,8 +49,7 @@ class ICA():
         return reconstruction_loss + self.lamb*independence_loss
 
     def grads(self, vars):
-        A = vars[:4].reshape(2, 2)
-        S = vars[4:].reshape(2, -1)
+        A, S = self._convert_vars(vars)
         A_grad = -(self.X - A @ S) @ S.T
         S_grad = -A.T @ (self.X - A @ S)
         c1 = np.dot(self.f(S[0]), self.g(S[1]))
@@ -47,16 +61,17 @@ class ICA():
         grads = np.zeros_like(vars)
         if self.mode != 'known_mix':
             grads[:4] = A_grad.reshape(-1)
-        grads[4:] = S_grad.reshape(-1)
+            grads[4:] = S_grad.reshape(-1)
+        else:
+            grads = S_grad.reshape(-1)
         return grads
 
     def hessian_l1(self, vars):
-        A = vars[:4].reshape(2, 2)
-        S = vars[4:].reshape(2, -1)
+        A, S = self._convert_vars(vars)
         T = S.shape[1]
 
         # top left
-        hessian_mat = np.zeros((len(vars), len(vars)))
+        hessian_mat = np.zeros((self.var_length, self.var_length))
         s_squared = S @ S.T
         hessian_mat[:2, :2] = s_squared
         hessian_mat[2:4, 2:4] = s_squared
@@ -84,9 +99,9 @@ class ICA():
         return hessian_mat
 
     def hessian_l2(self, vars):
-        S = vars[4:].reshape(2, -1)
+        _, S = self._convert_vars(vars)
         T = S.shape[1]
-        hessian_mat = np.zeros((len(vars), len(vars)))
+        hessian_mat = np.zeros((self.var_length, self.var_length))
         sfg01 = np.dot(self.f(S[0]), self.g(S[1]))
         sfg10 = np.dot(self.f(S[1]), self.g(S[0]))
         f, fd, fdd, g, gd, gdd = self._precompute_derivatives(S)
@@ -100,12 +115,9 @@ class ICA():
         return hessian_mat
 
     def hessian(self, vars):
-        temp = self.hessian_l1(vars) + self.lamb * self.hessian_l2(vars)
-        hess = np.zeros_like(temp)
+        hess =  self.hessian_l1(vars) + self.lamb * self.hessian_l2(vars)
         if self.mode == 'known_mix':
-            hess[4:, 4:] = temp[4:, 4:]
-        else:
-            hess = temp
+            return hess[4:, 4:]
         return hess
 
     def _precompute_derivatives(self, S):
