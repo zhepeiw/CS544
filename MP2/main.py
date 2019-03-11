@@ -2,22 +2,32 @@ import numpy as np
 import sys, os
 import pdb
 from scipy import optimize, sparse
-import matplotlib
-#  matplotlib.use('Agg')
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
+from utils import plot_surface
 
-def fn_smooth(h, M, L, C, lamb, ro):
+def fn_smooth(h, M, L, C, lamb, ro, add_constr=True):
     '''
+        Smoothness cost
         
+        Args:
+            h
+            M
+            L
+            C
+            lamb
+            ro
+            add_constr: boolean, whether or not to include 
+                contraint terms in the cost
+        
+        Returns:
+            Cost value
 
     '''
     f = 0.5 * h.T @ M @ h
+    if not add_constr:
+        return f
     g = L @ h - C
     return f - lamb.T @ g + 0.5 * ro * g.T @ g
-
 
 def get_finite_diff(n_points):
     '''
@@ -97,26 +107,8 @@ def lin_solver(Ax, Ay, L, C):
     B_right[-L.shape[0]:] = C
     res = sparse.linalg.spsolve(B_left, B_right)
     h = np.expand_dims(res[:-L.shape[0]], axis=1)
-    plot_surface(h)
+    return h
 
-
-
-def plot_surface(h):
-    '''
-        Plot the surface with height values h
-    '''
-    X = np.linspace(0, 1, 256)
-    Y = np.linspace(0, 1, 256)
-    X, Y = np.meshgrid(X, Y)
-    h = h.reshape(256, 256)
-
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    surf = ax.plot_surface(X, Y, h, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    fig.colorbar(surf, shrink=0.5, aspect=5)
-    plt.show()
-    
-    
 def smoothness_aug_lag():
     '''
         Driver function to run part 1
@@ -138,7 +130,7 @@ def smoothness_aug_lag():
     lamb0 = np.zeros((9, 1))
     
     h = aug_lag_solver(Ax, Ay, L, C, lamb0)
-    plot_surface(h)
+    plot_surface(h, file_path='./pr1.pdf')
 
 def smoothness_lin():
     '''
@@ -160,9 +152,10 @@ def smoothness_lin():
     L, C = get_constraints(G, H, 256)
 
     h = lin_solver(Ax, Ay, L, C) 
+    plot_surface(h, file_path='./pr2.pdf')
 
 
 if __name__ == "__main__":
-    smoothness_lin()
+    smoothness_aug_lag()
     pdb.set_trace()
 
