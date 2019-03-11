@@ -1,6 +1,7 @@
 import numpy as np
 import sys, os
 import pdb
+from scipy import optimize, sparse
 
 import matplotlib
 matplotlib.use('Agg')
@@ -16,13 +17,8 @@ def plot_surface(h, file_path, nrows=1, ncols=3):
     X = np.linspace(0, 1, 256)
     Y = np.linspace(0, 1, 256)
     X, Y = np.meshgrid(X, Y)
-    h = h.reshape(256, 256)
+    h = h.reshape(256, 256).T
 
-    #  fig = plt.figure()
-    #  ax = fig.gca(projection='3d')
-    #  surf = ax.plot_surface(X, Y, h, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    #  fig.colorbar(surf, shrink=0.5, aspect=5)
-    #  plt.show()
     x_min, x_max = np.min(X), np.max(X)
     y_min, y_max = np.min(Y), np.max(Y)
     z_min, z_max = np.min(h), np.max(h)
@@ -39,8 +35,9 @@ def plot_surface(h, file_path, nrows=1, ncols=3):
         ax.set_title("angle=" + str(azim) + " height=" + str(elev))
         ax.tick_params(labelsize=8)
         ax.view_init(azim=azim, elev=elev)
-        ax.plot_surface(X, Y, h, rstride=10, cstride=10, alpha=0.8, cmap=cm.coolwarm)
-        ax.contourf(X, Y, h, zdir='z', offset=z_min, cmap=cm.coolwarm)
+        ax.plot_surface(X, Y, h, rstride=10, cstride=10, alpha=0.8, 
+                        cmap=cm.bone_r, antialiased=False, linewidth=0)
+        ax.contourf(X, Y, h, zdir='z', offset=z_min, cmap=cm.bone_r)
         #  ax.contourf(X, Y, h, zdir='x', offset=x_min, cmap=cm.coolwarm)
 
         ax.set_xlabel('X')
@@ -52,3 +49,64 @@ def plot_surface(h, file_path, nrows=1, ncols=3):
 
     plt.savefig(file_path, dpi=80)
     plt.close() 
+
+def fn_smooth(h, M, L, C, lamb, ro, add_constr=True):
+    '''
+        Smoothness cost
+        
+        Args:
+            h
+            M
+            L
+            C
+            lamb
+            ro
+            add_constr: boolean, whether or not to include 
+                contraint terms in the cost
+        
+        Returns:
+            Cost value
+
+    '''
+    f = 0.5 * h.T @ M @ h
+    if not add_constr:
+        return f
+    g = L @ h - C
+    return f - lamb.T @ g + 0.5 * ro * g.T @ g
+
+def get_finite_diff(n_points):
+    '''
+        assuming h is in row-major order with [h(0, 0), h(0, 1), ... , h(0, n-1), ...]
+
+        returns:
+            Ax: sparse matrix with shape n_points**2 x n_points**2
+            Ay: sparse matrix with shape n_points**2 x n_points**2
+    '''
+    Ax = -sparse.eye(n_points**2, format='csr')
+    Ax += sparse.diags([1 for _ in range(n_points**2 - 1)], offsets=1, format='csr')
+    Ax[n_points-1::n_points] = Ax[n_points-2::n_points]
+
+    Ay = -sparse.eye(n_points**2, format='csr')
+    Ay += sparse.diags([1 for _ in range(n_points * (n_points - 1))], 
+                       offsets=n_points, format='csr')
+    Ay[n_points*(n_points-1):] = Ay[n_points*(n_points-2):n_points*(n_points-1)]
+    return Ax, Ay
+
+def get_constraints(G, H, n_points):
+    '''
+        returns:
+            L_sp: sparse matrix with shape n_c x n_points**2
+            C: vector with shape n_c x 1
+    '''
+
+    L_sp = sparse.csr_matrix((len(H), n_points**2))
+    for (i, grid) in enumerate(G):
+        x = int(grid[0] * (n_points-1))
+        y = int(grid[1] * (n_points-1))
+        idx = x * n_points + y
+        L_sp[i, idx] = 1
+    
+    #  C_sp = sparse.csc_matrix(np.expand_dims(np.array(H), axis=1).reshape(-1, 1))
+    C = np.expand_dims(np.array(H), axis=1).reshape(-1, 1)
+
+    return L_sp, C
