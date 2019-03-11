@@ -34,6 +34,7 @@ def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2,
             h = np.expand_dims(h, 1)
             curr_loss = fn_smooth(h, M, L, C, lamb, ro)
         else:
+            #  TODO: solving h for the min_surf case
             raise NotImplementedError
         if abs(curr_loss - loss) <= thresh:
             print('Stopped at {} iteration with loss difference {}'.format(epoch, abs(curr_loss-loss)))

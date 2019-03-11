@@ -1,7 +1,7 @@
 import numpy as np
 import sys, os
 import pdb
-from scipy import optimize, sparse
+from scipy import sparse
 
 import matplotlib
 matplotlib.use('Agg')
