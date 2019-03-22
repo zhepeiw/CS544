@@ -136,10 +136,6 @@ if __name__ == '__main__':
         os.mkdir(out_dir)
 
     file_name = '{}_{}_{}_{}.npz'.format(args.mode, n_samples, method, restart)
-<<<<<<< HEAD
-    #pdb.set_trace()
-=======
     losses = [model.loss(v)] + losses
     times = [0] + times
->>>>>>> c33ceebde4949debc38c377b8542207b56e742bf
     np.savez(os.path.join(out_dir, file_name), losses=losses, times=times)
