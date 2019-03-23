@@ -35,7 +35,7 @@ def plot_surface(h, file_path, nrows=1, ncols=3):
         ax.set_title("angle=" + str(azim) + " height=" + str(elev))
         ax.tick_params(labelsize=8)
         ax.view_init(azim=azim, elev=elev)
-        ax.plot_surface(X, Y, h, rstride=10, cstride=10, alpha=0.8, 
+        ax.plot_surface(X, Y, h, rstride=10, cstride=10, alpha=0.8,
                         cmap=cm.bone_r, antialiased=False, linewidth=0)
         ax.contourf(X, Y, h, zdir='z', offset=z_min, cmap=cm.bone_r)
         #  ax.contourf(X, Y, h, zdir='x', offset=x_min, cmap=cm.coolwarm)
@@ -48,12 +48,12 @@ def plot_surface(h, file_path, nrows=1, ncols=3):
         ax.set_zlim(z_min, z_max)
 
     plt.savefig(file_path, dpi=80)
-    plt.close() 
+    plt.close()
 
 def fn_smooth(h, M, L, C, lamb, ro, add_constr=True):
     '''
         Smoothness cost
-        
+
         Args:
             h
             M
@@ -61,14 +61,39 @@ def fn_smooth(h, M, L, C, lamb, ro, add_constr=True):
             C
             lamb
             ro
-            add_constr: boolean, whether or not to include 
+            add_constr: boolean, whether or not to include
                 contraint terms in the cost
-        
+
         Returns:
             Cost value
 
     '''
     f = 0.5 * h.T @ M @ h
+    if not add_constr:
+        return f
+    g = L @ h - C
+    return f - lamb.T @ g + 0.5 * ro * g.T @ g
+
+def fn_area(h, N, L, C, lamb, ro, add_constr=True):
+    '''
+        Smoothness cost
+
+        Args:
+            h
+            N
+            L
+            C
+            lamb
+            ro
+            add_constr: boolean, whether or not to include
+                contraint terms in the cost
+
+        Returns:
+            Cost value
+
+    '''
+    v = sparse.bmat([[N @ h], [sparse.csr_matrix(np.reshape([1]*h.shape[0],(-1,1)))]])
+    f = v.T @ v
     if not add_constr:
         return f
     g = L @ h - C
@@ -87,7 +112,7 @@ def get_finite_diff(n_points):
     Ax[n_points-1::n_points] = Ax[n_points-2::n_points]
 
     Ay = -sparse.eye(n_points**2, format='csr')
-    Ay += sparse.diags([1 for _ in range(n_points * (n_points - 1))], 
+    Ay += sparse.diags([1 for _ in range(n_points * (n_points - 1))],
                        offsets=n_points, format='csr')
     Ay[n_points*(n_points-1):] = Ay[n_points*(n_points-2):n_points*(n_points-1)]
     return Ax, Ay
@@ -105,7 +130,7 @@ def get_constraints(G, H, n_points):
         y = int(grid[1] * (n_points-1))
         idx = x * n_points + y
         L_sp[i, idx] = 1
-    
+
     #  C_sp = sparse.csc_matrix(np.expand_dims(np.array(H), axis=1).reshape(-1, 1))
     C = np.expand_dims(np.array(H), axis=1).reshape(-1, 1)
 

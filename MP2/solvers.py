@@ -1,9 +1,9 @@
 import numpy as np
 from scipy import optimize, sparse
-from utils import fn_smooth
+from utils import fn_smooth, fn_area
 
 
-def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2, 
+def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2,
                    n_epochs=10, thresh=1e-3, mode='smooth'):
     """
        Solver for Augmented Lagrangian Method
@@ -27,6 +27,8 @@ def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2,
 
     loss = np.infty
     M = Ax.T @ Ax + Ay.T @ Ay
+    N = sparse.bmat([[Ax],[Ay]])
+    N = N.T @ N
     for epoch in range(n_epochs):
         # solve for h and estimate loss
         if mode == 'smooth':
@@ -34,8 +36,9 @@ def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2,
             h = np.expand_dims(h, 1)
             curr_loss = fn_smooth(h, M, L, C, lamb, ro)
         else:
-            #  TODO: solving h for the min_surf case
-            raise NotImplementedError
+            h = sparse.linalg.spsolve(N + ro * L.T @ L, ro * L.T @ C + L.T @ lamb)
+            h = np.expand_dims(h, 1)
+            curr_loss = fn_area(h, N, L, C, lamb, ro)
         if abs(curr_loss - loss) <= thresh:
             print('Stopped at {} iteration with loss difference {}'.format(epoch, abs(curr_loss-loss)))
             break
@@ -48,9 +51,9 @@ def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2,
 
 def lin_solver(Ax, Ay, L, C):
     '''
-        Solver of smoothness cost using linear system  
+        Solver of smoothness cost using linear system
     '''
-    M = Ax.T @ Ax + Ay.T @ Ay 
+    M = Ax.T @ Ax + Ay.T @ Ay
     B_left = sparse.bmat([[M, -L.T], [L, sparse.csr_matrix((L.shape[0], L.shape[0]))]])
     B_right = sparse.csc_matrix((M.shape[1] + L.shape[0], 1))
     B_right[-L.shape[0]:] = C
