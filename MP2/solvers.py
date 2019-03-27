@@ -24,11 +24,8 @@ def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2,
 
     """
     assert mode in ['smooth', 'min_surf']
-
     loss = np.infty
     M = Ax.T @ Ax + Ay.T @ Ay
-    N = sparse.bmat([[Ax],[Ay]])
-    N = N.T @ N
     for epoch in range(n_epochs):
         # solve for h and estimate loss
         if mode == 'smooth':
@@ -36,15 +33,14 @@ def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2,
             h = np.expand_dims(h, 1)
             curr_loss = fn_smooth(h, M, L, C, lamb, ro)
         else:
-            h = sparse.linalg.spsolve(N + ro * L.T @ L, ro * L.T @ C + L.T @ lamb)
-            h = np.expand_dims(h, 1)
-            curr_loss = fn_area(h, N, L, C, lamb, ro)
+            h = optimize.minimize(fn_area, np.array([0] * Ax.shape[0]), (Ax, Ay, L, C, lamb, ro), jac=True, method='L-BFGS-B').x
+            curr_loss, _ = fn_area(h, Ax, Ay, L, C, lamb, ro)
         if abs(curr_loss - loss) <= thresh:
             print('Stopped at {} iteration with loss difference {}'.format(epoch, abs(curr_loss-loss)))
             break
         # update lamb and ro
         loss = curr_loss
-        lamb -= ro / 2 * (L @ h - C)
+        lamb -= ro / 2 * (np.reshape(L @ h, (-1,1)) - C)
         ro *= r
 
     return h

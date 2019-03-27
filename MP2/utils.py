@@ -36,8 +36,8 @@ def plot_surface(h, file_path, nrows=1, ncols=3):
         ax.tick_params(labelsize=8)
         ax.view_init(azim=azim, elev=elev)
         ax.plot_surface(X, Y, h, rstride=10, cstride=10, alpha=0.8,
-                        cmap=cm.bone_r, antialiased=False, linewidth=0)
-        ax.contourf(X, Y, h, zdir='z', offset=z_min, cmap=cm.bone_r)
+                        cmap=cm.coolwarm, antialiased=False, linewidth=0)
+        ax.contourf(X, Y, h, zdir='z', offset=z_min, cmap=cm.coolwarm)
         #  ax.contourf(X, Y, h, zdir='x', offset=x_min, cmap=cm.coolwarm)
 
         ax.set_xlabel('X')
@@ -74,13 +74,14 @@ def fn_smooth(h, M, L, C, lamb, ro, add_constr=True):
     g = L @ h - C
     return f - lamb.T @ g + 0.5 * ro * g.T @ g
 
-def fn_area(h, N, L, C, lamb, ro, add_constr=True):
+def fn_area(h, Ax, Ay, L, C, lamb, ro, add_constr=True):
     '''
         Smoothness cost
 
         Args:
             h
-            N
+            Ax
+            Ay
             L
             C
             lamb
@@ -92,12 +93,16 @@ def fn_area(h, N, L, C, lamb, ro, add_constr=True):
             Cost value
 
     '''
-    v = sparse.bmat([[N @ h], [sparse.csr_matrix(np.reshape([1]*h.shape[0],(-1,1)))]])
-    f = v.T @ v
+    Axh = Ax @ h
+    Ayh = Ay @ h
+    d = np.sqrt(Axh * Axh  + Ayh * Ayh + np.array([1] * Ax.shape[0]))
+    D = sparse.diags(1/d)
+    J = np.reshape(Axh.T @ D @ Ax + Ayh.T @ D @ Ay, (-1,1))
+    f = d @ np.array([1] * D.shape[0])
     if not add_constr:
-        return f
-    g = L @ h - C
-    return f - lamb.T @ g + 0.5 * ro * g.T @ g
+        return f, J
+    g = np.reshape(L @ h,(-1,1)) - C
+    return f - lamb.T @ g + 0.5 * ro * g.T @ g, J + L.T @ lamb + ro * L.T @ g
 
 def get_finite_diff(n_points):
     '''

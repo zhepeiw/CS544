@@ -110,6 +110,6 @@ def min_surf_vert():
 if __name__ == "__main__":
     smooth_aug_lag()
     smooth_lin()
-    #min_surf_edge()
-    #min_surf_vert()
-    #pdb.set_trace()
+    min_surf_edge()
+    min_surf_vert()
+    pdb.set_trace()
