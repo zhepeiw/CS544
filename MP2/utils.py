@@ -102,7 +102,7 @@ def fn_area(h, Ax, Ay, L, C, lamb, ro, add_constr=True):
     if not add_constr:
         return f, J
     g = np.reshape(L @ h,(-1,1)) - C
-    return f - lamb.T @ g + 0.5 * ro * g.T @ g, J + L.T @ lamb + ro * L.T @ g
+    return f - lamb.T @ g + 0.5 * ro * g.T @ g, J - L.T @ lamb + ro * L.T @ g
 
 def get_finite_diff(n_points):
     '''
