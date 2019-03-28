@@ -4,7 +4,7 @@ from utils import fn_smooth, fn_area
 
 
 def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2,
-                   n_epochs=10, thresh=1e-3, mode='smooth'):
+                   n_epochs=20, thresh=1e-3, mode='smooth'):
     """
        Solver for Augmented Lagrangian Method
 

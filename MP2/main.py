@@ -108,8 +108,8 @@ def min_surf_vert():
     plot_surface(h, file_path='./pr4.pdf')
 
 if __name__ == "__main__":
-    smooth_aug_lag()
-    smooth_lin()
-    min_surf_edge()
+    #smooth_aug_lag()
+    #smooth_lin()
+    #min_surf_edge()
     min_surf_vert()
-    pdb.set_trace()
+    #pdb.set_trace()

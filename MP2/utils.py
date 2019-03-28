@@ -35,8 +35,8 @@ def plot_surface(h, file_path, nrows=1, ncols=3):
         ax.set_title("angle=" + str(azim) + " height=" + str(elev))
         ax.tick_params(labelsize=8)
         ax.view_init(azim=azim, elev=elev)
-        ax.plot_surface(X, Y, h, rstride=10, cstride=10, alpha=0.8,
-                        cmap=cm.coolwarm, antialiased=False, linewidth=0)
+        ax.plot_surface(X, Y, h, rstride=1, cstride=1, alpha=0.8,
+                        cmap=cm.coolwarm, antialiased=False, linewidth=0.1, shade=True)
         ax.contourf(X, Y, h, zdir='z', offset=z_min, cmap=cm.coolwarm)
         #  ax.contourf(X, Y, h, zdir='x', offset=x_min, cmap=cm.coolwarm)
 
