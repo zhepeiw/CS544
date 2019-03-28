@@ -43,7 +43,7 @@ def aug_lag_solver(Ax, Ay, L, C, lamb, ro=1, r=2,
         lamb -= ro / 2 * (np.reshape(L @ h, (-1,1)) - C)
         ro *= r
 
-    return h
+    return np.reshape(h, (-1,1))
 
 def lin_solver(Ax, Ay, L, C):
     '''

@@ -81,7 +81,7 @@ def min_surf_edge():
     Ax, Ay = get_finite_diff(256)
     lamb0 = np.zeros((257 * 6 - 9, 1))
     h = aug_lag_solver(Ax, Ay, L, C, lamb0, n_epochs=12, thresh=1e-6, mode='min_surf')
-    print(np.max(L @ h - C), np.mean(np.abs(L @ h - C)))
+    print(np.max(np.reshape(L @ h, (-1, 1)) - C), np.mean(np.abs(np.reshape(L @ h, (-1, 1)) - C)))
     plot_surface(h, file_path='./pr3.pdf')
 
 def min_surf_vert():
@@ -112,6 +112,6 @@ def min_surf_vert():
 if __name__ == "__main__":
     #smooth_aug_lag()
     #smooth_lin()
-    #min_surf_edge()
-    min_surf_vert()
+    min_surf_edge()
+    #min_surf_vert()
     #pdb.set_trace()
