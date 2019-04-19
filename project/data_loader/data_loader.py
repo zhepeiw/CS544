@@ -14,6 +14,7 @@ import os
 import glob2
 import psutil
 import inspect
+from librosa.core import stft
 from sklearn.externals import joblib
 from torch.utils.data import Dataset, DataLoader
 
@@ -90,10 +91,15 @@ class End2EndMixtureDataset(Dataset):
         self.return_items = self.get_arg_and_check_validness(
             'return_items',
             known_type=list,
-            choices=['mic1_wav',
-                     'mic1_wav_downsampled',
+            choices=['bpd',
+                     'mixture_wav',
+                     'bpd_sources_wavs',
                      'clean_sources_wavs',
-                     'clean_sources_wavs_downsampled'])
+                     'mixture_wav_downsampled',
+                     'bpd_sources_wavs_downsampled',
+                     'clean_sources_wavs_downsampled',
+                     'ds',
+                     'rpd'])
 
         self.n_batches = int(self.n_items / self.batch_size)
 
@@ -173,11 +179,11 @@ class End2EndMixtureDataset(Dataset):
     @staticmethod
     def load_item_file(path):
         try:
-            loaded_file = joblib.load(path)
+            torch_vector = joblib.load(path)
         except:
             raise IOError("Failed to load data file from path: {} "
                           "".format(path))
-        return loaded_file
+        return torch_vector
 
     def __getitem__(self, idx):
         """!
@@ -204,7 +210,7 @@ def get_args():
                     'on the Fourie domain')
     parser.add_argument("-i", "--input_dataset_p", type=str,
                         help="Dataset path you want to load",
-                        default=None, required=True)
+                        default=None)
     parser.add_argument("-bs", "--batch_size", type=int,
                         help="""The number of samples in each batch. 
                             Warning: Cannot be less than the number of 
@@ -222,13 +228,17 @@ def get_args():
                         choices which are based on the saved data 
                         names which are available. There is no type 
                         checking in this return argument.""",
-                        default=['mic1_wav_downsampled',
-                                 'clean_sources_wavs_downsampled'],
-                        required=True,
-                        choices=['mic1_wav',
-                                 'mic1_wav_downsampled',
+                        default=['mixture_wav',
+                                 'clean_sources_wavs'],
+                        choices=['bpd',
+                                 'mixture_wav',
+                                 'bpd_sources_wavs',
                                  'clean_sources_wavs',
-                                 'clean_sources_wavs_downsampled'])
+                                 'mixture_wav_downsampled',
+                                 'bpd_sources_wavs_downsampled',
+                                 'clean_sources_wavs_downsampled',
+                                 'ds',
+                                 'rpd'])
     return parser.parse_args()
 
 
@@ -243,37 +253,51 @@ def get_data_gen_from_loader(data_loader):
     return data_generator
 
 
-def example_of_usage(pytorch_dataloader_args):
+def get_numpy_data_generator(default_parameters):
+    default_parameters.batch_size = 1
+    data_loader = End2EndMixtureDataset(**vars(default_parameters))
+    data_gen = get_data_gen_from_loader(data_loader)
+    return data_gen
+
+
+def convert_to_numpy(l):
+    return [el.squeeze().numpy() for el in l]
+
+
+def example_of_usage(dataset_path='/mnt/data/CS544_data/'
+                     'timit_5400_1800_512_2_fm_random_taus_delays/val',
+                     return_items=['mixture_wav',
+                                   'clean_sources_wavs',
+                                   'rpd']):
     """!
     Simple example of how to use this pytorch data loader"""
+    default_parameters = get_args()
     # lets change the list of the return items:
-    # pytorch_dataloader_args.return_items = ['mixture_wav',
-    #                                         'bpd_sources_wavs']
+    default_parameters.return_items = return_items
+    default_parameters.input_dataset_p = dataset_path
+    data_gen = get_numpy_data_generator(default_parameters)
 
-    data_loader = End2EndMixtureDataset(**vars(pytorch_dataloader_args))
-    data_gen = get_data_gen_from_loader(data_loader)
-
-    batch_cnt = 0
-    print("Loading {} Batches of size: {} for mixtures with {} active "
-          "sources...".format(
-          data_loader.get_n_batches(),
-          data_loader.batch_size,
-          data_loader.get_n_sources()) + "\n" + "=" * 20 + "\n")
-
+    flag = False
     for batch_data_list in data_gen:
         # the returned elements are tensors
         # Always the first dimension is the selected batch size
-        mixture_wav, clean_sources = batch_data_list
-        if not batch_cnt:
-            print("Returned mixture_wav of type: {} and size: "
-                  "{}".format(type(mixture_wav),
-                              mixture_wav.size()))
-            print("Returned bpd_sources_wavs of type: {} and size: "
-                  "{}".format(type(clean_sources),
-                              clean_sources.size()))
-            batch_cnt += 1
+
+        numpy_data_list = convert_to_numpy(batch_data_list)
+        mix_wav, clean_wavs, phase_diff = numpy_data_list
+        mix_stft = stft(mix_wav,
+                        n_fft=512,
+                        win_length=512,
+                        hop_length=128)
+        numpy_data_list.append(mix_stft)
+
+        if not flag:
+            for el, name in zip(numpy_data_list,
+                                return_items+['mix_stft']):
+                print(name, type(el), el.shape)
+            flag = True
 
 
 if __name__ == "__main__":
-    pytorch_dataloader_args = get_args()
-    example_of_usage(pytorch_dataloader_args)
+    # pytorch_dataloader_args = get_args()
+    example_of_usage()
+    # np_dataloader = get_numpy_data_generator()
