@@ -69,7 +69,36 @@ def cluster_noise(im):
     labels_noise = labels_noise.reshape(32, 32)
 
     return labels, labels_noise, centers 
-    
+
+def visualize_result(y_km, y_ns, y_re, centers):
+    '''
+
+    '''
+    im_km = np.zeros(y_km.shape + (3,))
+    im_ns = np.zeros_like(im_km)
+    im_re = np.zeros_like(im_km)
+    for i in range(im_km.shape[0]):
+        for j in range(im_km.shape[1]):
+            im_km[i, j] = centers[y_km[i, j]]
+            im_ns[i, j] = centers[y_ns[i, j]]
+            im_re[i, j] = centers[y_re[i, j]]
+
+    if not os.path.exists('out'):
+        os.mkdir('out')
+    plt.figure(figsize=(20, 10))
+    plt.subplot(131)
+    plt.imshow(im_km)
+    plt.title('K-means')
+    plt.subplot(132)
+    plt.imshow(im_ns)
+    plt.title('Noisy')
+    plt.subplot(133)
+    plt.imshow(im_re)
+    plt.title('Denoised')
+    plt.savefig('out/res.pdf')
+    plt.close()
+
+
 
 if __name__ == '__main__':
     ds = prepare_dataset()
