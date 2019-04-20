@@ -61,6 +61,8 @@ def calculate_Q(E):
     return Q
 
 def Mean_Field_Approx(Y, n_class=32, lamb=0.9, thresh=1e-5):
+    #  Q = np.random.rand(*Y.shape, n_class)
+    #  Q = Q / Q.sum(axis=-1, keepdims=True)
     Q = np.zeros(Y.shape + (32,))
     # one-hot initialize Q to be the observation
     for i in range(Q.shape[0]):
