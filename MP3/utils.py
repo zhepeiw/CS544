@@ -49,28 +49,27 @@ def cluster_noise(im):
     im_noise = X_noise.reshape(32, 32, 3)
 
 
-    if not os.path.exists('out'):
-        os.mkdir('out')
-    plt.figure(figsize=(20, 10))
-    plt.subplot(131)
-    plt.imshow(im.transpose(0, 1).transpose(1, 2).numpy())
-    plt.title('Original')
-    plt.subplot(132)
-    plt.imshow(im_km)
-    plt.title('Transformed')
-    plt.subplot(133)
-    plt.imshow(im_noise)
-    plt.title('Noised')
-    plt.savefig('out/im.pdf')
-    plt.close()
-
+    #  if not os.path.exists('out'):
+    #      os.mkdir('out')
+    #  plt.figure(figsize=(20, 10))
+    #  plt.subplot(131)
+    #  plt.imshow(im.transpose(0, 1).transpose(1, 2).numpy())
+    #  plt.title('Original')
+    #  plt.subplot(132)
+    #  plt.imshow(im_km)
+    #  plt.title('Transformed')
+    #  plt.subplot(133)
+    #  plt.imshow(im_noise)
+    #  plt.title('Noised')
+    #  plt.savefig('out/im.pdf')
+    #  plt.close()
 
     labels = labels.reshape(32, 32)
     labels_noise = labels_noise.reshape(32, 32)
 
     return labels, labels_noise, centers 
 
-def visualize_result(y_km, y_ns, y_re, centers):
+def visualize_result(y_km, y_ns, y_re, centers, save_name='res.pdf'):
     '''
 
     '''
@@ -95,7 +94,8 @@ def visualize_result(y_km, y_ns, y_re, centers):
     plt.subplot(133)
     plt.imshow(im_re)
     plt.title('Denoised')
-    plt.savefig('out/res.pdf')
+    out_path = os.path.join('out/', save_name)
+    plt.savefig(out_path)
     plt.close()
 
 

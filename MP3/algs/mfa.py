@@ -41,7 +41,7 @@ def calculate_E(Y, Q, lamb):
             # calculate observation vs hidden cost 
             eqhx = -np.ones_like(eqhh)
             eqhx[Y[i, j]] = 1
-            E[i, j] = eqlogq - eqhh - eqhx
+            E[i, j] = eqlogq - Q[i, j] * (eqhh + eqhx)
 
     return E   
 
