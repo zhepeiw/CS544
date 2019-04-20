@@ -17,31 +17,31 @@ def calculate_E(Y, Q, lamb):
             # calculate expectation of EQ[log(Q)]
             eqlogq = Q[i, j] * np.log(Q[i, j])
             # calculate hidden nbr cost 
-            eqhh = np.zeros_like(eqlogq)
+            hh = np.zeros_like(eqlogq)
             if i != 0:
                 Hj = Q[i - 1, j].argmax()
-                temp = -np.ones_like(eqhh)
+                temp = -np.ones_like(hh)
                 temp[Hj] = 1
-                eqhh += lamb * temp 
+                hh += lamb * temp 
             if i != Y.shape[0] - 1:
                 Hj = Q[i + 1, j].argmax()
-                temp = -np.ones_like(eqhh)
+                temp = -np.ones_like(hh)
                 temp[Hj] = 1
-                eqhh += lamb * temp 
+                hh += lamb * temp 
             if j != 0:
                 Hj = Q[i, j - 1].argmax()
-                temp = -np.ones_like(eqhh)
+                temp = -np.ones_like(hh)
                 temp[Hj] = 1
-                eqhh += lamb * temp 
+                hh += lamb * temp 
             if j != Y.shape[1] - 1:
                 Hj = Q[i, j + 1].argmax()
-                temp = -np.ones_like(eqhh)
+                temp = -np.ones_like(hh)
                 temp[Hj] = 1
-                eqhh += lamb * temp 
+                hh += lamb * temp 
             # calculate observation vs hidden cost 
-            eqhx = -np.ones_like(eqhh)
-            eqhx[Y[i, j]] = 1
-            E[i, j] = eqlogq - Q[i, j] * (eqhh + eqhx)
+            hx = -np.ones_like(hh)
+            hx[Y[i, j]] = 1
+            E[i, j] = eqlogq - Q[i, j] * (hh + hx)
 
     return E   
 
