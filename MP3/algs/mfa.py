@@ -22,25 +22,25 @@ def calculate_E(Y, Q, lamb):
                 Hj = Q[i - 1, j].argmax()
                 temp = -np.ones_like(hh)
                 temp[Hj] = 1
-                hh += lamb * temp 
+                hh += temp 
             if i != Y.shape[0] - 1:
                 Hj = Q[i + 1, j].argmax()
                 temp = -np.ones_like(hh)
                 temp[Hj] = 1
-                hh += lamb * temp 
+                hh += temp 
             if j != 0:
                 Hj = Q[i, j - 1].argmax()
                 temp = -np.ones_like(hh)
                 temp[Hj] = 1
-                hh += lamb * temp 
+                hh += temp 
             if j != Y.shape[1] - 1:
                 Hj = Q[i, j + 1].argmax()
                 temp = -np.ones_like(hh)
                 temp[Hj] = 1
-                hh += lamb * temp 
+                hh += temp 
             # calculate observation vs hidden cost 
             hx = -np.ones_like(hh)
-            hx[Y[i, j]] = 1
+            hx[Y[i, j]] = lamb
             E[i, j] = eqlogq - Q[i, j] * (hh + hx)
 
     return E   
