@@ -17,6 +17,19 @@ def get_dataset():
     data_gen = data_loader.get_numpy_data_generator(default_parameters)
     return data_gen
 
+def get_normalized_spectrogram(wav):
+    stft_representation = (stft(wav,
+                                 n_fft=512,
+                                 win_length=512,
+                                 hop_length=128))
+    
+    # normalize the spectrogram values 
+    stft_representation = (stft_representation - np.mean(stft_representation)) / (
+                           np.std(stft_representation) + 10e-9)
+
+    spec = np.abs(stft_representation)
+    return stft_representation, spec**0.2
+
 def build_graph_from_img(unary, binary, horiz_weight=0, vert_weight=0):
     height, width = binary.shape
     g = maxflow.Graph[float](height*width, height*width*2)
@@ -72,24 +85,31 @@ def evaluate(data_gen, horiz_weight, vert_weight):
     for batch_data_list in data_gen:
         numpy_data_list = data_loader.convert_to_numpy(batch_data_list)
         mix_wav, clean_wavs, phase_diff = numpy_data_list
+        phase_diff = (np.clip(phase_diff, -2, 2) / 4 + 0.5)
         mix_stft, mix_spec = get_normalized_spectrogram(mix_wav)
         g, nodeids = build_graph_from_img(phase_diff, mix_spec,
             horiz_weight=horiz_weight, vert_weight=vert_weight)
         g.maxflow()
         mask = g.get_grid_segments(nodeids)
-        s1_estimate = istft(mix_stft * mask[::-1, :],
+        s1_estimate = istft(mix_stft * mask,
                     win_length=512,
                     hop_length=128)
-        total_sisnr += compute_sisnr_and_return_pair(s1_estimate, clean_wavs)[0]
+        s2_estimate = istft(mix_stft * (1. - mask),
+                    win_length=512,
+                    hop_length=128)
+        s1_sisnr = compute_sisnr_and_return_pair(s1_estimate, clean_wavs)[0]
+        s2_sisnr = compute_sisnr_and_return_pair(s2_estimate, clean_wavs)[0]
+        total_sisnr += 0.5 * (s1_sisnr + s2_sisnr)
     return total_sisnr / total_size
 
 def main():
     grid_size = 20
     data_gen = get_dataset()
-    weights = np.log_scale = np.logspace(np.log10(1e-6), np.log10(2), grid_size)
+    weights = np.log_scale = np.logspace(np.log10(1e-4), np.log10(2), grid_size)
+    weights[0] = 0.
     max_sisnr = 0
     best_weights = (0, 0)
-    grid = np.zeros(grid_size, grid_size)
+    grid = np.zeros((grid_size, grid_size))
     for i, horiz_weight in enumerate(weights):
         for j, vert_weight in enumerate(weights):
             mean_sisnr = evaluate(data_gen, horiz_weight, vert_weight)
@@ -99,6 +119,8 @@ def main():
                 best_weights = (horiz_weight, vert_weight)
             print('H: {}, W: {}, SISNR: {}'.format(horiz_weight,
                 vert_weight, mean_sisnr))
+    print('Besy weights: ', best_weights)
+    print('Max SISNR: ', max_sisnr)
     np.savez('results.npz', grid=grid, X=weights, Y=weights)
 
 if __name__=='__main__':
